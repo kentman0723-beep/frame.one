@@ -13,11 +13,10 @@ import {
     Zap,
 } from 'lucide-react';
 import {
-    LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer,
+    XAxis, YAxis, Tooltip, ResponsiveContainer,
     CartesianGrid, Area, AreaChart,
 } from 'recharts';
 import { useApp } from '../store';
-import type { BattleRecord } from '../types';
 import ReactMarkdown from 'react-markdown';
 
 // ========================================
@@ -26,38 +25,30 @@ import ReactMarkdown from 'react-markdown';
 function WidgetCard({
     title,
     icon: Icon,
-    span = 'col-span-12 md:col-span-6',
+    spanClass = 'col-12',
     children,
     accentColor = 'cyan',
 }: {
     title: string;
     icon: React.ElementType;
-    span?: string;
+    spanClass?: string;
     children: React.ReactNode;
     accentColor?: 'cyan' | 'magenta';
 }) {
-    const colors = {
-        cyan: { text: 'text-cyan', bg: 'bg-cyan/10', border: 'border-cyan/20', glow: 'glow-cyan' },
-        magenta: { text: 'text-magenta', bg: 'bg-magenta/10', border: 'border-magenta/20', glow: 'glow-magenta' },
-    };
-    const c = colors[accentColor];
-
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className={`${span} glass-card p-6 lg:p-8 flex flex-col`}
+            className={`widget-card ${spanClass}`}
         >
-            <div className="flex items-center gap-4 mb-6">
-                <div className={`p-3 rounded-xl ${c.bg} ${c.border} border`}>
-                    <Icon className={`w-6 h-6 ${c.text}`} />
+            <div className="widget-header">
+                <div className={`widget-icon-wrap ${accentColor}`}>
+                    <Icon size={22} color={accentColor === 'cyan' ? 'var(--cyan)' : 'var(--magenta)'} />
                 </div>
-                <h3 className="font-heading text-lg font-semibold text-text tracking-wide uppercase">
-                    {title}
-                </h3>
+                <h3 className="widget-title">{title}</h3>
             </div>
-            <div className="flex-1">{children}</div>
+            <div style={{ flex: 1 }}>{children}</div>
         </motion.div>
     );
 }
@@ -76,7 +67,6 @@ function BattleLogWidget() {
     const selectedGame = state.games.find(g => g.id === state.selectedGameId);
     const characters = selectedGame?.tags.filter(t => t.category === 'character') || [];
 
-    // Streak counter
     const streak = useMemo(() => {
         const records = state.battleRecords.filter(
             r => !state.selectedGameId || r.gameId === state.selectedGameId
@@ -94,11 +84,9 @@ function BattleLogWidget() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!myChar || !oppChar) return;
-
         const gameId = state.selectedGameId || state.games[0]?.id;
         if (!gameId) return;
 
-        // スマートサジェスト: 新しいキャラ名を自動登録
         const existingChars = state.games.find(g => g.id === gameId)?.tags.filter(t => t.category === 'character') || [];
         if (!existingChars.some(t => t.name === myChar)) {
             dispatch({ type: 'ADD_TAG', payload: { gameId, tag: { name: myChar, category: 'character' } } });
@@ -125,54 +113,60 @@ function BattleLogWidget() {
     };
 
     return (
-        <WidgetCard title="Battle Log" icon={Swords} span="col-span-12 lg:col-span-7">
+        <WidgetCard title="Battle Log" icon={Swords} spanClass="col-7">
             {/* Streak */}
             {streak.count >= 2 && (
                 <motion.div
                     initial={{ scale: 0.8, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className={`mb-5 p-4 rounded-xl border flex items-center gap-4 ${streak.type === 'win'
-                        ? 'bg-success/5 border-success/20'
-                        : 'bg-danger/5 border-danger/20'
-                        }`}
+                    style={{
+                        marginBottom: 20,
+                        padding: 14,
+                        borderRadius: 12,
+                        border: `1px solid ${streak.type === 'win' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'}`,
+                        background: streak.type === 'win' ? 'rgba(34,197,94,0.05)' : 'rgba(239,68,68,0.05)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                    }}
                 >
                     {streak.type === 'win' ? (
-                        <Flame className="w-6 h-6 text-success animate-pulse-glow" />
+                        <Flame size={22} color="var(--success)" className="animate-pulse-glow" />
                     ) : (
-                        <Skull className="w-6 h-6 text-danger" />
+                        <Skull size={22} color="var(--danger)" />
                     )}
-                    <span className="font-heading font-bold text-base">
+                    <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontWeight: 700, fontSize: '1rem' }}>
                         {streak.type === 'win' ? `🔥 ${streak.count}連勝中！` : `💀 ${streak.count}連敗中...`}
                     </span>
                 </motion.div>
             )}
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                     <div>
-                        <label className="block text-sm font-medium text-text-muted mb-2">自キャラ</label>
+                        <label className="form-label">自キャラ</label>
                         <input
                             type="text"
                             list="my-chars"
                             value={myChar}
                             onChange={e => setMyChar(e.target.value)}
                             placeholder="キャラ名"
-                            className="w-full px-4 py-3 rounded-xl bg-void-lighter border border-glass-border text-base text-text placeholder:text-text-muted focus:outline-none focus:border-cyan/40 transition-colors"
+                            className="form-input"
                         />
                         <datalist id="my-chars">
                             {characters.map(c => <option key={c.id} value={c.name} />)}
                         </datalist>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-text-muted mb-2">相手キャラ</label>
+                        <label className="form-label">相手キャラ</label>
                         <input
                             type="text"
                             list="opp-chars"
                             value={oppChar}
                             onChange={e => setOppChar(e.target.value)}
                             placeholder="キャラ名"
-                            className="w-full px-4 py-3 rounded-xl bg-void-lighter border border-glass-border text-base text-text placeholder:text-text-muted focus:outline-none focus:border-cyan/40 transition-colors"
+                            className="form-input"
                         />
                         <datalist id="opp-chars">
                             {characters.map(c => <option key={c.id} value={c.name} />)}
@@ -180,86 +174,80 @@ function BattleLogWidget() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
                     <div>
-                        <label className="block text-sm font-medium text-text-muted mb-2">勝敗</label>
-                        <div className="flex gap-2">
+                        <label className="form-label">勝敗</label>
+                        <div style={{ display: 'flex', gap: 8 }}>
                             <button
                                 type="button"
                                 onClick={() => setResult('win')}
-                                className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all ${result === 'win'
-                                    ? 'bg-success/15 border-success/40 text-success'
-                                    : 'bg-void-lighter border-glass-border text-text-muted hover:border-success/20'
-                                    }`}
+                                className={`btn-win ${result === 'win' ? 'selected' : ''}`}
                             >
-                                <Trophy className="w-4 h-4 inline mr-1" />WIN
+                                <Trophy size={16} />WIN
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setResult('lose')}
-                                className={`flex-1 py-3 rounded-xl text-sm font-bold border transition-all ${result === 'lose'
-                                    ? 'bg-danger/15 border-danger/40 text-danger'
-                                    : 'bg-void-lighter border-glass-border text-text-muted hover:border-danger/20'
-                                    }`}
+                                className={`btn-lose ${result === 'lose' ? 'selected' : ''}`}
                             >
-                                <Skull className="w-4 h-4 inline mr-1" />LOSE
+                                <Skull size={16} />LOSE
                             </button>
                         </div>
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-text-muted mb-2">LP増減</label>
+                        <label className="form-label">LP増減</label>
                         <input
                             type="number"
                             value={lpChange}
                             onChange={e => setLpChange(e.target.value)}
                             placeholder="±50"
-                            className="w-full px-4 py-3 rounded-xl bg-void-lighter border border-glass-border text-base text-text placeholder:text-text-muted focus:outline-none focus:border-cyan/40 transition-colors"
+                            className="form-input"
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-text-muted mb-2">メモ</label>
+                        <label className="form-label">メモ</label>
                         <input
                             type="text"
                             value={memo}
                             onChange={e => setMemo(e.target.value)}
                             placeholder="対空が甘い..."
-                            className="w-full px-4 py-3 rounded-xl bg-void-lighter border border-glass-border text-base text-text placeholder:text-text-muted focus:outline-none focus:border-cyan/40 transition-colors"
+                            className="form-input"
                         />
                     </div>
                 </div>
 
-                <button
-                    type="submit"
-                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan/80 to-cyan/60 text-void font-bold text-base hover:from-cyan hover:to-cyan/80 transition-all flex items-center justify-center gap-2 glow-cyan"
-                >
-                    <Plus className="w-5 h-5" />
+                <button type="submit" className="btn-primary">
+                    <Plus size={20} />
                     記録を追加
                 </button>
             </form>
 
             {/* Recent Records */}
-            <div className="mt-6 space-y-3 max-h-[300px] overflow-y-auto">
+            <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 300, overflowY: 'auto' }}>
                 {state.battleRecords
                     .filter(r => !state.selectedGameId || r.gameId === state.selectedGameId)
                     .slice(0, 10)
                     .map(record => (
-                        <div
-                            key={record.id}
-                            className="flex items-center gap-4 p-3.5 rounded-xl bg-void-lighter/50 border border-glass-border text-sm"
-                        >
-                            <span className={`font-bold ${record.result === 'win' ? 'text-success' : 'text-danger'}`}>
+                        <div key={record.id} className="record-item">
+                            <span style={{ fontWeight: 700, color: record.result === 'win' ? 'var(--success)' : 'var(--danger)' }}>
                                 {record.result === 'win' ? 'W' : 'L'}
                             </span>
-                            <span className="text-text font-medium">{record.myCharacter}</span>
-                            <span className="text-text-muted">vs</span>
-                            <span className="text-text font-medium">{record.opponentCharacter}</span>
-                            <span className={`ml-auto font-mono ${record.lpChange >= 0 ? 'text-success' : 'text-danger'}`}>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{record.myCharacter}</span>
+                            <span style={{ color: 'var(--text-muted)' }}>vs</span>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{record.opponentCharacter}</span>
+                            <span style={{
+                                marginLeft: 'auto',
+                                fontFamily: 'monospace',
+                                color: record.lpChange >= 0 ? 'var(--success)' : 'var(--danger)',
+                            }}>
                                 {record.lpChange >= 0 ? '+' : ''}{record.lpChange} LP
                             </span>
                         </div>
                     ))}
                 {state.battleRecords.length === 0 && (
-                    <p className="text-center text-text-muted text-sm py-6">まだ記録がありません</p>
+                    <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.95rem', padding: '24px 0' }}>
+                        まだ記録がありません
+                    </p>
                 )}
             </div>
         </WidgetCard>
@@ -278,7 +266,6 @@ function MatchupNotesWidget() {
     const selectedGame = state.games.find(g => g.id === state.selectedGameId);
     const characters = selectedGame?.tags.filter(t => t.category === 'character') || [];
 
-    // 相手キャラの一覧（戦績から自動収集）
     const opponents = useMemo(() => {
         const opps = new Set<string>();
         state.battleRecords
@@ -304,11 +291,11 @@ function MatchupNotesWidget() {
     };
 
     return (
-        <WidgetCard title="Matchup Notes" icon={BookOpen} span="col-span-12 lg:col-span-5" accentColor="magenta">
-            <div className="space-y-3">
+        <WidgetCard title="Matchup Notes" icon={BookOpen} spanClass="col-5" accentColor="magenta">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
-                    <label className="block text-sm font-medium text-text-muted mb-2">対戦相手キャラ</label>
-                    <div className="relative">
+                    <label className="form-label">対戦相手キャラ</label>
+                    <div style={{ position: 'relative' }}>
                         <select
                             value={selectedOpp}
                             onChange={e => {
@@ -319,41 +306,48 @@ function MatchupNotesWidget() {
                                 setNoteContent(note?.content || '');
                                 setIsEditing(false);
                             }}
-                            className="w-full px-4 py-3 rounded-xl bg-void-lighter border border-glass-border text-base text-text focus:outline-none focus:border-magenta/40 transition-colors appearance-none"
+                            className="form-select"
                         >
                             <option value="">選択...</option>
                             {opponents.map(opp => (
                                 <option key={opp} value={opp}>{opp}</option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-muted pointer-events-none" />
+                        <ChevronDown size={18} color="var(--text-muted)" style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                     </div>
                 </div>
 
                 {selectedOpp && (
-                    <div className="min-h-[180px]">
+                    <div style={{ minHeight: 180 }}>
                         {isEditing ? (
-                            <div className="space-y-2">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <textarea
                                     value={noteContent}
                                     onChange={e => setNoteContent(e.target.value)}
-                                    placeholder="対策メモをMarkdownで記入...&#10;&#10;## 注意ポイント&#10;- 飛び込みに対空&#10;- 波動拳を読んで飛び"
+                                    placeholder={"対策メモをMarkdownで記入...\n\n## 注意ポイント\n- 飛び込みに対空\n- 波動拳を読んで飛び"}
                                     rows={7}
-                                    className="w-full px-4 py-3 rounded-xl bg-void-lighter border border-glass-border text-base text-text placeholder:text-text-muted focus:outline-none focus:border-magenta/40 transition-colors resize-none"
+                                    className="form-input"
+                                    style={{ resize: 'none' }}
                                 />
-                                <div className="flex gap-2">
+                                <div style={{ display: 'flex', gap: 8 }}>
                                     <button
                                         onClick={handleSave}
-                                        className="flex-1 py-3 rounded-xl bg-magenta/20 border border-magenta/30 text-magenta text-sm font-bold hover:bg-magenta/30 transition-colors"
-                                    >
-                                        保存
-                                    </button>
+                                        style={{
+                                            flex: 1, padding: 12, borderRadius: 12,
+                                            background: 'rgba(255,0,170,0.2)', border: '1px solid rgba(255,0,170,0.3)',
+                                            color: 'var(--magenta)', fontSize: '0.9rem', fontWeight: 700,
+                                            cursor: 'pointer',
+                                        }}
+                                    >保存</button>
                                     <button
                                         onClick={() => setIsEditing(false)}
-                                        className="px-5 py-3 rounded-xl bg-void-lighter border border-glass-border text-text-muted text-sm hover:text-text transition-colors"
-                                    >
-                                        キャンセル
-                                    </button>
+                                        style={{
+                                            padding: '12px 20px', borderRadius: 12,
+                                            background: 'var(--void-lighter)', border: '1px solid var(--glass-border)',
+                                            color: 'var(--text-muted)', fontSize: '0.9rem',
+                                            cursor: 'pointer',
+                                        }}
+                                    >キャンセル</button>
                                 </div>
                             </div>
                         ) : (
@@ -362,14 +356,18 @@ function MatchupNotesWidget() {
                                     setNoteContent(currentNote?.content || '');
                                     setIsEditing(true);
                                 }}
-                                className="min-h-[180px] p-3 rounded-lg bg-void-lighter/50 border border-glass-border cursor-pointer hover:border-magenta/20 transition-colors"
+                                style={{
+                                    minHeight: 180, padding: 16, borderRadius: 12,
+                                    background: 'rgba(17,17,24,0.5)', border: '1px solid var(--glass-border)',
+                                    cursor: 'pointer', transition: 'border-color 0.2s',
+                                }}
                             >
                                 {currentNote?.content ? (
-                                    <div className="prose prose-invert prose-base max-w-none text-text-dim text-base leading-relaxed">
+                                    <div style={{ color: 'var(--text-dim)', fontSize: '1rem', lineHeight: 1.7 }}>
                                         <ReactMarkdown>{currentNote.content}</ReactMarkdown>
                                     </div>
                                 ) : (
-                                    <p className="text-text-muted text-sm text-center pt-16">
+                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', textAlign: 'center', paddingTop: 64 }}>
                                         クリックして対策メモを追加...
                                     </p>
                                 )}
@@ -379,7 +377,7 @@ function MatchupNotesWidget() {
                 )}
 
                 {!selectedOpp && (
-                    <div className="flex items-center justify-center min-h-[180px] text-text-muted text-sm">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 180, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
                         対戦相手を選択するとメモが表示されます
                     </div>
                 )}
@@ -401,7 +399,6 @@ function GrowthGraphWidget() {
             .reverse();
 
         let lp = state.profile.currentLP;
-        // LP逆算: 現在LPから過去に遡る
         for (const r of [...records].reverse()) {
             lp -= r.lpChange;
         }
@@ -410,30 +407,23 @@ function GrowthGraphWidget() {
         let currentLP = lp;
         records.forEach((r, i) => {
             currentLP += r.lpChange;
-            data.push({
-                name: `#${i + 1}`,
-                lp: currentLP,
-                game: i + 1,
-            });
+            data.push({ name: `#${i + 1}`, lp: currentLP, game: i + 1 });
         });
-
         return data;
     }, [state.battleRecords, state.selectedGameId, state.profile.currentLP]);
 
     return (
-        <WidgetCard title="Growth Graph" icon={TrendingUp} span="col-span-12 lg:col-span-7">
-            <div className="flex items-center gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                    <Zap className="w-6 h-6 text-cyan animate-pulse-glow" />
-                    <span className="font-heading text-3xl font-bold text-text">
-                        {state.profile.currentLP.toLocaleString()}
-                    </span>
-                    <span className="text-sm text-text-muted">LP</span>
-                </div>
+        <WidgetCard title="Growth Graph" icon={TrendingUp} spanClass="col-7">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+                <Zap size={22} color="var(--cyan)" className="animate-pulse-glow" />
+                <span style={{ fontFamily: "'Chakra Petch', sans-serif", fontSize: '2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {state.profile.currentLP.toLocaleString()}
+                </span>
+                <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>LP</span>
             </div>
 
             {chartData.length > 1 ? (
-                <div className="h-[280px] -mx-2">
+                <div style={{ height: 280, marginLeft: -8, marginRight: -8 }}>
                     <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={chartData}>
                             <defs>
@@ -443,22 +433,15 @@ function GrowthGraphWidget() {
                                 </linearGradient>
                             </defs>
                             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                            <XAxis
-                                dataKey="name"
-                                tick={{ fill: '#64748b', fontSize: 10 }}
-                                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                            />
-                            <YAxis
-                                tick={{ fill: '#64748b', fontSize: 10 }}
-                                axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
-                            />
+                            <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
+                            <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.1)' }} />
                             <Tooltip
                                 contentStyle={{
                                     background: '#0d0d14',
                                     border: '1px solid rgba(255,255,255,0.1)',
                                     borderRadius: '8px',
                                     color: '#e2e8f0',
-                                    fontSize: '12px',
+                                    fontSize: '13px',
                                 }}
                                 labelStyle={{ color: '#64748b' }}
                             />
@@ -475,7 +458,7 @@ function GrowthGraphWidget() {
                     </ResponsiveContainer>
                 </div>
             ) : (
-                <div className="flex items-center justify-center h-[280px] text-text-muted text-sm">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 280, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
                     2件以上の戦績データを入力するとグラフが表示されます
                 </div>
             )}
@@ -484,7 +467,7 @@ function GrowthGraphWidget() {
 }
 
 // ========================================
-// Widget D: Analysis (弱点発見)
+// Widget D: Analysis
 // ========================================
 function AnalysisWidget() {
     const { state } = useApp();
@@ -493,7 +476,6 @@ function AnalysisWidget() {
         const records = state.battleRecords.filter(
             r => !state.selectedGameId || r.gameId === state.selectedGameId
         );
-
         const stats: Record<string, { wins: number; losses: number; total: number }> = {};
         records.forEach(r => {
             if (!stats[r.opponentCharacter]) {
@@ -503,19 +485,14 @@ function AnalysisWidget() {
             if (r.result === 'win') stats[r.opponentCharacter].wins++;
             else stats[r.opponentCharacter].losses++;
         });
-
         return Object.entries(stats)
-            .map(([name, s]) => ({
-                name,
-                winRate: Math.round((s.wins / s.total) * 100),
-                ...s,
-            }))
+            .map(([name, s]) => ({ name, winRate: Math.round((s.wins / s.total) * 100), ...s }))
             .sort((a, b) => a.winRate - b.winRate);
     }, [state.battleRecords, state.selectedGameId]);
 
     return (
-        <WidgetCard title="Analysis" icon={AlertTriangle} span="col-span-12 lg:col-span-5" accentColor="magenta">
-            <div className="space-y-3 max-h-[350px] overflow-y-auto">
+        <WidgetCard title="Analysis" icon={AlertTriangle} spanClass="col-5" accentColor="magenta">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 350, overflowY: 'auto' }}>
                 {matchupStats.length > 0 ? (
                     matchupStats.map(stat => {
                         const isDanger = stat.winRate < 40;
@@ -525,36 +502,36 @@ function AnalysisWidget() {
                                 key={stat.name}
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
-                                className={`p-4 rounded-xl border flex items-center justify-between ${isDanger
-                                    ? 'bg-danger/5 border-danger/20'
-                                    : isStrong
-                                        ? 'bg-success/5 border-success/20'
-                                        : 'bg-void-lighter/50 border-glass-border'
-                                    }`}
+                                className={`analysis-item ${isDanger ? 'danger' : isStrong ? 'strong' : ''}`}
                             >
-                                <div className="flex items-center gap-4">
-                                    {isDanger && <AlertTriangle className="w-5 h-5 text-danger animate-pulse-glow" />}
-                                    {isStrong && <Trophy className="w-5 h-5 text-success" />}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                    {isDanger && <AlertTriangle size={18} color="var(--danger)" className="animate-pulse-glow" />}
+                                    {isStrong && <Trophy size={18} color="var(--success)" />}
                                     <div>
-                                        <p className="text-base font-medium text-text">vs {stat.name}</p>
-                                        <p className="text-sm text-text-muted">{stat.total}戦 ({stat.wins}勝 {stat.losses}敗)</p>
+                                        <p style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-primary)' }}>vs {stat.name}</p>
+                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{stat.total}戦 ({stat.wins}勝 {stat.losses}敗)</p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className={`font-heading text-xl font-bold ${isDanger ? 'text-danger' : isStrong ? 'text-success' : 'text-text'
-                                        }`}>
-                                        {stat.winRate}%
-                                    </p>
+                                <div style={{ textAlign: 'right' }}>
+                                    <p style={{
+                                        fontFamily: "'Chakra Petch', sans-serif",
+                                        fontSize: '1.3rem',
+                                        fontWeight: 700,
+                                        color: isDanger ? 'var(--danger)' : isStrong ? 'var(--success)' : 'var(--text-primary)',
+                                    }}>{stat.winRate}%</p>
                                     {isDanger && (
-                                        <span className="text-xs text-danger font-medium">⚠ 危険!</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--danger)', fontWeight: 500 }}>⚠ 危険!</span>
                                     )}
                                 </div>
                             </motion.div>
                         );
                     })
                 ) : (
-                    <div className="flex flex-col items-center justify-center min-h-[250px] text-text-muted text-sm gap-3">
-                        <AlertTriangle className="w-12 h-12 text-text-muted/30" />
+                    <div style={{
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                        minHeight: 250, color: 'var(--text-muted)', fontSize: '0.95rem', gap: 12,
+                    }}>
+                        <AlertTriangle size={48} color="rgba(100,116,139,0.3)" />
                         <p>戦績を記録すると分析が表示されます</p>
                     </div>
                 )}
@@ -570,32 +547,30 @@ export default function Dashboard() {
     const { state, dispatch } = useApp();
 
     return (
-        <div className="space-y-8">
+        <div>
             {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+            <div className="page-header">
                 <div>
-                    <h2 className="font-heading text-3xl lg:text-4xl font-bold tracking-wide">
+                    <h2 className="page-title">
                         THE <span className="gradient-text">COCKPIT</span>
                     </h2>
-                    <p className="text-base text-text-dim mt-2">
-                        あなたの戦場を俯瞰するダッシュボード
-                    </p>
+                    <p className="page-subtitle">あなたの戦場を俯瞰するダッシュボード</p>
                 </div>
 
-                {/* Game Selector */}
                 {state.games.length > 0 && (
-                    <div className="relative">
+                    <div style={{ position: 'relative' }}>
                         <select
                             value={state.selectedGameId || ''}
                             onChange={e => dispatch({ type: 'SELECT_GAME', payload: e.target.value || null })}
-                            className="px-5 py-3 pr-10 rounded-xl bg-void-lighter border border-glass-border text-base text-text focus:outline-none focus:border-cyan/40 transition-colors appearance-none min-w-[220px]"
+                            className="form-select"
+                            style={{ minWidth: 220 }}
                         >
                             <option value="">全てのゲーム</option>
                             {state.games.map(g => (
                                 <option key={g.id} value={g.id}>{g.name}</option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+                        <ChevronDown size={18} color="var(--text-muted)" style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
                     </div>
                 )}
             </div>
@@ -605,20 +580,17 @@ export default function Dashboard() {
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="glass-card p-12 lg:p-16 text-center flex flex-col items-center justify-center min-h-[60vh]"
+                    className="glass-card empty-state"
                 >
-                    <div className="w-24 h-24 mx-auto mb-8 rounded-3xl bg-cyan/10 border border-cyan/20 flex items-center justify-center">
-                        <Swords className="w-12 h-12 text-cyan" />
+                    <div className="empty-icon-wrap">
+                        <Swords size={48} color="var(--cyan)" />
                     </div>
-                    <h3 className="font-heading text-2xl lg:text-3xl font-semibold mb-4">まずはゲームを登録しよう</h3>
-                    <p className="text-lg text-text-dim mb-8 max-w-md">
+                    <h3 className="empty-title">まずはゲームを登録しよう</h3>
+                    <p className="empty-desc">
                         Game Config からゲームタイトルとキャラクターを登録すると、ここにデータが表示されます。
                     </p>
-                    <a
-                        href="/config"
-                        className="inline-flex items-center gap-3 px-8 py-4 rounded-xl bg-gradient-to-r from-cyan/80 to-cyan/60 text-void font-bold text-lg hover:from-cyan hover:to-cyan/80 transition-all glow-cyan"
-                    >
-                        <Plus className="w-6 h-6" />
+                    <a href="/config" className="empty-btn">
+                        <Plus size={24} />
                         Game Config へ
                     </a>
                 </motion.div>
@@ -626,7 +598,7 @@ export default function Dashboard() {
 
             {/* Bento Grid */}
             {state.games.length > 0 && (
-                <div className="bento-grid gap-6">
+                <div className="bento-grid">
                     <BattleLogWidget />
                     <MatchupNotesWidget />
                     <GrowthGraphWidget />
